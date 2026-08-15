@@ -748,6 +748,40 @@ mergeInto(LibraryManager.library, {
     // For chrome on android, need to make container div fullscreen instead
     return document.getElementById('canvas_wrapper') ? 1 : 0;
   },
+  interop_RequestPointerLock: function() {
+    var canvas = Module['canvas'];
+    if (!canvas || !canvas.requestPointerLock) return;
+
+    // Raw input avoids OS mouse acceleration and cursor recentering artifacts.
+    // Avoid in Firefox, which may accept the request but then fail to deliver events
+    // (see bugzilla bug 2037802)
+    if (window.cc_noRawInput || 'mozInnerScreenX' in window) {
+      canvas.requestPointerLock();
+      return;
+    }
+
+    var promise;
+    try {
+      promise = canvas.requestPointerLock({ unadjustedMovement: true });
+    } catch (e) {
+      // Older browsers may throw on an options argument
+      window.cc_noRawInput = true;
+      canvas.requestPointerLock();
+      return;
+    }
+
+    if (!promise || !promise.catch) return;
+    promise.catch(function(err) {
+      if (err && err.name === 'NotSupportedError') {
+        window.cc_noRawInput = true;
+        // This retry may be rejected when outside an input event handler.
+        // Next input event will request a plain lock instead.
+        var retry = canvas.requestPointerLock();
+        if (retry && retry.catch) retry.catch(function(err2) { });
+      }
+      // Other errors (e.g. document not focused) are ignored
+    });
+  },
   interop_ForceTouchPageLayout: function() {
     if (typeof(forceTouchLayout) === 'function') forceTouchLayout();
   },

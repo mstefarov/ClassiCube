@@ -37,6 +37,7 @@ static void SetFullscreenBounds(void) {
 	emscripten_set_canvas_element_size("#canvas", width, height);
 }
 
+extern void interop_RequestPointerLock(void);
 /* Browser only allows pointer lock requests in response to user input */
 static void DeferredEnableRawMouse(void) {
 	EmscriptenPointerlockChangeEvent status;
@@ -44,7 +45,7 @@ static void DeferredEnableRawMouse(void) {
 
 	status.isActive = false;
 	emscripten_get_pointerlock_status(&status);
-	if (!status.isActive) emscripten_request_pointerlock("#canvas", false);
+	if (!status.isActive) interop_RequestPointerLock();
 }
 
 static EM_BOOL OnMouseWheel(int type, const EmscriptenWheelEvent* ev, void* data) {
