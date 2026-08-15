@@ -48,9 +48,18 @@ static void DeferredEnableRawMouse(void) {
 }
 
 static EM_BOOL OnMouseWheel(int type, const EmscriptenWheelEvent* ev, void* data) {
-	/* TODO: The scale factor isn't standardised.. is there a better way though? */
-	Mouse_ScrollHWheel(-Math_Sign(ev->deltaX));
-	Mouse_ScrollVWheel(-Math_Sign(ev->deltaY));
+	float scale;
+	/* Trackpads fire many small wheel deltas, so scrolling one whole */
+	/*  notch per event would scroll the hotbar far too fast */
+	/* Fractional notches are accumulated by Mouse_ScrollVWheel */
+	switch (ev->deltaMode) {
+	case DOM_DELTA_PIXEL: scale = 1.0f / 100.0f; break; /* ~100 pixels per notch */
+	case DOM_DELTA_LINE:  scale = 1.0f /   3.0f; break; /* ~3 lines per notch */
+	default:              scale = 1.0f;          break; /* 1 page = 1 notch */
+	}
+
+	Mouse_ScrollHWheel(-ev->deltaX * scale);
+	Mouse_ScrollVWheel(-ev->deltaY * scale);
 	DeferredEnableRawMouse();
 	return true;
 }
